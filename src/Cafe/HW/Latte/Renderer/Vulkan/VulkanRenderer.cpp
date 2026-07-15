@@ -241,12 +241,12 @@ void VulkanRenderer::DetermineVendor()
 	}
 }
 
+// ============ MODIFIED FUNCTION ============
 void VulkanRenderer::GetDeviceFeatures()
 {
 	/* Get Vulkan features via GetPhysicalDeviceFeatures2 */
 	void* prevStruct = nullptr;
 	VkPhysicalDeviceCustomBorderColorFeaturesEXT bcf{};
-	bcf.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
 	bcf.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
 	prevStruct = &bcf;
 
@@ -273,6 +273,21 @@ void VulkanRenderer::GetDeviceFeatures()
 		prevStruct = &pprf;
 	}
 
+	// Add depth_clip_enable feature query
+	VkPhysicalDeviceDepthClipEnableFeaturesEXT depthClipFeature{};
+	if (m_featureControl.deviceExtensions.depth_clip_enable)
+	{
+		depthClipFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
+		depthClipFeature.pNext = prevStruct;
+		prevStruct = &depthClipFeature;
+	}
+
+	// Add synchronization2 feature query (not used but safe to have)
+	VkPhysicalDeviceSynchronization2FeaturesKHR sync2Feature{};
+	sync2Feature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+	sync2Feature.pNext = prevStruct;
+	prevStruct = &sync2Feature;
+
 	VkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT attachmentFeedbackLoopDynamicStateFeature{};
 	if (m_featureControl.deviceExtensions.attachment_feedback_loop_dynamic_state)
 	{
@@ -296,6 +311,14 @@ void VulkanRenderer::GetDeviceFeatures()
 	vkGetPhysicalDeviceFeatures2(m_physicalDevice, &physicalDeviceFeatures2);
 
 	cemuLog_log(LogType::Force, "Vulkan: present_wait extension: {}", (pwf.presentWait && pidf.presentId) ? "supported" : "unsupported");
+
+	// ** IMPORTANT: Update feature flags based on actual support **
+	m_featureControl.deviceExtensions.present_wait = (pwf.presentWait == VK_TRUE && pidf.presentId == VK_TRUE);
+	m_featureControl.deviceExtensions.custom_border_color = (bcf.customBorderColors == VK_TRUE);
+	if (m_featureControl.deviceExtensions.depth_clip_enable)
+		m_featureControl.deviceExtensions.depth_clip_enable = (depthClipFeature.depthClipEnable == VK_TRUE);
+	// Synchronization2 – we don't use it yet, but we could check:
+	// m_featureControl.deviceExtensions.synchronization2 = (sync2Feature.synchronization2 == VK_TRUE);
 
 	/* Get Vulkan device properties and limits */
 	VkPhysicalDeviceFloatControlsPropertiesKHR pfcp{};
@@ -361,6 +384,7 @@ void VulkanRenderer::GetDeviceFeatures()
 	// calculate used limits
 	m_featureControl.limits.calcUniformBufferAlignmentM1 = std::max(m_featureControl.limits.minUniformBufferOffsetAlignment, m_featureControl.limits.nonCoherentAtomSize) - 1;
 }
+// ============ END OF MODIFIED FUNCTION ============
 
 #if BOOST_OS_LINUX
 #include <sys/wait.h>
