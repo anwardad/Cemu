@@ -1,6 +1,7 @@
 name: Build Cemu
 
 on:
+  workflow_dispatch:
   workflow_call:
     inputs:
       next_version_major:
@@ -230,7 +231,7 @@ jobs:
 
     - name: "Install system dependencies"
       run: |
-        # Removing azure/bicep and aws to silence warnings in Github Actions
+        # Removing azure/bicep and aws to silence warnings in Github Actions
         brew uninstall bicep
         brew untap aws/tap azure/bicep
         brew update
